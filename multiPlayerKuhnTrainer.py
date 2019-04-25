@@ -96,12 +96,40 @@ class KuhnTrainer:
 
         return False
 
+    @staticmethod
+    def calculate_terminal_payoff(plays, history, cards):
+        if plays == 3:
+            # No one bets - showdown
+            if history == 'ppp':
+                return 2 if cards[0] > max(cards[1], cards[2]) else -1
+            elif history.count('b') == 1:
+                return 2
+            elif history.count('b') == 2:
+                if history[1] == 'b':
+                    # Showdown with player 2
+                    return 3 if cards[0] > cards[1] else -2
+                else:
+                    # Showdown with player 3
+                    return 3 if cards[0] > cards[2] else -2
+            else:
+                return 4 if cards[0] > max(cards[1], cards[2]) else -2
 
-    def calculate_terminal_payoff(self, plays, history, cards, player, opponents):
-        #TODO
-        pass
+        # If more than 3 cards in history, player 1 must of passed followed by
+        # player 2 or player 3 betting, requiring another round
+        else:
+            # Player 1 doesn't bet
+            if history[3] == 'p':
+                return -1
+            # Player 1 bets 1 other player
+            elif history.count('b') == 2:
+                if history[1] == 'b':  #PBPB
+                    return 3 if cards[0] > cards[1] else -2
+                else:  #PPBBP
+                    return 3 if cards[0] > cards[2] else -2
 
-
+            # Player 1 bets both players
+            else:
+                return 4 if cards[0] > max(cards[1], cards[2]) else -2
 
     def cfr(self, cards, history, player0, player1):
         """
@@ -118,7 +146,6 @@ class KuhnTrainer:
 
         if self._is_terminal_state(plays, history):
             return self.calculate_terminal_payoff(plays, history, cards, player, opponents)
-
 
         info_set = str(cards[player]) + history
 
@@ -180,7 +207,7 @@ def main():
     iterations = 1000000
     KuhnTrainer().train(iterations)
 
-main()
+#main()
 
 
 TERMINAL_STATES = ['PPP', 'BPP', 'BPB', 'BBP', 'BBB', 'PBPP', 'PBPB', 'PBBP', 'PBBB' 'PPBPP', 'PPBPB', 'PPBBP', 'PPBBB']

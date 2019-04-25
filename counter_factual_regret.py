@@ -16,6 +16,7 @@ For n number of iterations:
     5) Add play regrets to player cumulative regrets
 '''
 
+
 class RPSTrainer():
     ROCK = 0
     PAPER = 1
@@ -60,7 +61,7 @@ class RPSTrainer():
         other_action = self.get_action(self.opp_strategy)
         return my_action, other_action
 
-    def compute_action_utilities(self, other_action, action_utility):
+    def compute_action_utilities(self, other_action):
         """
         [Rock, Paper, Scissors]
 
@@ -72,10 +73,11 @@ class RPSTrainer():
             action_utility = [1, -1, 0]
 
         :param other_action:
-        :param action_utility:
+
         :return:
         """
-        action_utility[other_action] = 0
+        action_utility = [0] * self.NUM_ACTIONS
+        action_utility[other_action] = 0  # dont need parameter instantiate list here
 
         # Compute Winner Utility
         i = 0 if other_action == self.NUM_ACTIONS - 1 else other_action + 1
@@ -89,13 +91,13 @@ class RPSTrainer():
 
     def accumulate_action_regrets(self, my_action, action_utility):
         for i in range(0, self.NUM_ACTIONS):
+            # u(s'_i, s_-i) - u(a)
             self.regret_sum[i] += action_utility[i] - action_utility[my_action]
 
     def train(self, iterations=1000000):
-        action_utility = [0] * self.NUM_ACTIONS
         for i in range(0, iterations):
             my_action, other_action = self.get_regret_matched_mixed_strategy_actions()
-            action_utility = self.compute_action_utilities(other_action, action_utility)
+            action_utility = self.compute_action_utilities(other_action)
             self.accumulate_action_regrets(my_action, action_utility)
 
     def get_average_strategy(self):

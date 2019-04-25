@@ -1,5 +1,6 @@
 import random
 
+
 class Node:
     # Information set node class definition
 
@@ -19,9 +20,10 @@ class Node:
         """
         normalizing_sum = 0.0
         strategy = [0.0] * self.NUM_ACTIONS
-        for i in range(0, self.NUM_ACTIONS):
-            strategy[i] = self.regret_sum[i] if self.regret_sum[i] > 0 else 0.0
-            normalizing_sum += strategy[i]
+        for a in range(0, self.NUM_ACTIONS):
+            # Do not consider negative regrets in determining strategy
+            strategy[a] = max(self.regret_sum[a], 0)
+            normalizing_sum += strategy[a]
 
         for i in range(0, self.NUM_ACTIONS):
             if normalizing_sum > 0:
@@ -40,14 +42,14 @@ class Node:
         """
         avg_strategy = [0] * self.NUM_ACTIONS
         normalizing_sum = 0.0
-        for i in range(0, self.NUM_ACTIONS):
-            normalizing_sum += self.strategy_sum[i]
+        for a in range(0, self.NUM_ACTIONS):
+            normalizing_sum += self.strategy_sum[a]
 
-        for i in range(0, self.NUM_ACTIONS):
+        for a in range(0, self.NUM_ACTIONS):
             if normalizing_sum > 0:
-                avg_strategy[i] = self.strategy_sum[i] / normalizing_sum
+                avg_strategy[a] = self.strategy_sum[a] / normalizing_sum
             else:
-                avg_strategy[i] = 1.0 / self.NUM_ACTIONS
+                avg_strategy[a] = 1.0 / self.NUM_ACTIONS
 
         return avg_strategy
 
@@ -66,14 +68,17 @@ class KuhnTrainer:
                 '2': Node('2'), '2b': Node('2b'), '2p': Node('2p'), '2pb': Node('2pb'),
                 '3': Node('3'), '3b': Node('3b'), '3p': Node('3p'), '3pb': Node('3pb')}
 
-    def cfr(self, cards, history, player0, player1):
+    def cfr(self, cards, history, rp0, rp1):
         """
         Counterfactual regret minimization for Kuhn Poker
         :param cards:   list[int] -
         :param history: string    -
-        :param player0: float     - probability of player 0 actions
-        :param player1: float     - probability of player 1 actions
+        :param rp0: float     - reach probability of player 0 (pi)
+        :param rp1: float     - reach probability of player 1 (pi)
         :return:
+
+
+
         """
         plays = len(history)
         player = plays % 2
@@ -104,28 +109,31 @@ class KuhnTrainer:
             node = self.node_map[info_set]
 
         # For each action, recursively call cfr with additional history and probability
-        cur_player = player0 if player == 0 else player1
-        strategy = node.get_strategy(cur_player)
+        reach_probability = rp0 if player == 0 else rp1
+        # strategy[i] -> sigma^t (I, a)
+        strategy = node.get_strategy(reach_probability)
         util = [0.0] * self.NUM_ACTIONS
         node_util = 0.0
-        for i in range(0, self.NUM_ACTIONS):
-            next_history = history + ('p' if i == 0 else 'b')
+        for a in range(0, self.NUM_ACTIONS):
+            next_history = history + ('p' if a == 0 else 'b')
             if player == 0:
-                util[i] = - self.cfr(cards, next_history, player0*strategy[i], player1)
+                util[a] = rp1 * (- self.cfr(cards, next_history, rp0*strategy[a], rp1))
             else:
-                util[i] = - self.cfr(cards, next_history, player0, player1*strategy[i])
+                util[a] = rp0 * (- self.cfr(cards, next_history, rp0, rp1*strategy[a]))
 
-            node_util += strategy[i] * util[i]
+            node_util += strategy[a] * util[a]
 
         # For each action, compute and accumulate counterfactual regret
-        for i in range(0, self.NUM_ACTIONS):
-            regret = util[i] - node_util
+        for a in range(0, self.NUM_ACTIONS):
+            regret = util[a] - node_util
             # This also updates node_mapping
-            node.regret_sum[i] += player1 * regret if player == 0 else player0 * regret
+            node.regret_sum[a] += regret
+            #node.regret_sum[a] += rp1 * regret if player == 0 else rp0 * regret
 
         return node_util
 
-    def shuffle_cards(self, cards):
+    @staticmethod
+    def shuffle_cards(cards):
         for c1 in range(len(cards) - 1, 0, -1):
             c2 = random.randint(0, c1)
             tmp = cards[c1]
@@ -142,11 +150,15 @@ class KuhnTrainer:
 
         # index 0 will be card for player 1
         # index 1 will be card for player 2
-        cards = [1, 2, 3]
+        #cards = [1, 2, 3]
+        c1 = [2, 3, 1]  # Test Case
+        c2 = [2, 1, 3]  # Test Case
+        cards = [c1, c2]
         util = 0
-        for _ in range(iterations):
-            cards = self.shuffle_cards(cards)
-            util += self.cfr(cards, '', 1, 1)
+        for i in range(iterations):
+            #cards = self.shuffle_cards(cards)
+            #print(cards[i])
+            util += self.cfr(cards[i], '', 1, 1)
 
         print('Average game value: {}'.format(util / iterations))
         for info_set in sorted(self.node_map):
