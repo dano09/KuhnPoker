@@ -1,43 +1,60 @@
 from multiPlayerKuhnTrainer import KuhnTrainer
 
+"""
+Round 3 - Player Z Utility for Winning and Losing Hands
+"""
+R3_Z_WIN = [1, 2, 3]
+R3_Z_LOSE = [3, 2, 1]
+ROUND3 = [R3_Z_WIN, R3_Z_LOSE]
+
+PPP_RESULTS = [2, -1]
+BPP_RESULTS = [-1, -1]
+BPB_RESULTS = [3, -2]
+BBP_RESULTS = [-1, -1]
+BBB_RESULTS = [4, -2]
+
+"""
+Round 4 - Player X Utility for Winning and Losing Hands
+"""
+R4_X_WIN = [3, 1, 2]
+R4_X_LOSE = [1, 2, 3]
+
+PBPP_RESULTS = [-1, -1]
+PBPB_RESULTS = [3, -2]
+PBBP_RESULTS = [-1, -1]
+PBBB_RESULTS = [4, -2]
+ROUND4 = [R4_X_WIN, R4_X_LOSE]
+
+"""
+Round 5 - Player Y Utility for Winning and Losing Hands
+"""
+R5_Y_WIN = [1, 3, 2]
+R5_Y_LOSE = [3, 1, 2]
+
+PPBPP_RESULTS = [-1, -1]
+PPBPB_RESULTS = [3, -2]
+PPBBP_RESULTS = [-1, -1]
+PPBBB_RESULTS = [4, -2]
+ROUND5 = [R5_Y_WIN, R5_Y_LOSE]
+
+"""
+Test all rounds
+"""
 t = KuhnTrainer()
-
-CARDS_P1_HIGH = [3, 2, 1]
-CARDS_P1_MID  = [2, 3, 1]
-CARDS_P1_LOW  = [1, 3, 2]
-
-CARD_COMBOS = [CARDS_P1_HIGH, CARDS_P1_MID, CARDS_P1_LOW]
-
-PPP_RESULTS = [2, -1, -1]
-BPP_RESULTS = [2, 2, 2]
-BPB_RESULTS = [3, 3, -2]
-BBP_RESULTS = [3, -2, -2]
-BBB_RESULTS = [4, -2, -2]
-PBPP_RESULTS = [-1, -1, -1]
-PBPB_RESULTS = [3, -2, -2]
-PBBP_RESULTS = [-1, -1, -1]
-PBBB_RESULTS = [4, -2, -2]
-PPBPP_RESULTS = [-1, -1, -1]
-PPBPB_RESULTS = [-1, -1, -1]
-
-PPBBP_RESULTS = [3, 3, -2]
-
-PPBBB_RESULTS = [4, -2, -2]
-
-
-for i in range(len(CARD_COMBOS)):
-    assert t.calculate_terminal_payoff(plays=3, history='ppp', cards=CARD_COMBOS[i]) == PPP_RESULTS[i]
-    assert t.calculate_terminal_payoff(plays=3, history='bpp', cards=CARD_COMBOS[i]) == BPP_RESULTS[i]
-    assert t.calculate_terminal_payoff(plays=3, history='bpb', cards=CARD_COMBOS[i]) == BPB_RESULTS[i]
-    assert t.calculate_terminal_payoff(plays=3, history='bbp', cards=CARD_COMBOS[i]) == BBP_RESULTS[i]
-    assert t.calculate_terminal_payoff(plays=3, history='bbb', cards=CARD_COMBOS[i]) == BBB_RESULTS[i]
-
-    assert t.calculate_terminal_payoff(plays=4, history='pbpp', cards=CARD_COMBOS[i]) == PBPP_RESULTS[i]
-    assert t.calculate_terminal_payoff(plays=4, history='pbpb', cards=CARD_COMBOS[i]) == PBPB_RESULTS[i]
-    assert t.calculate_terminal_payoff(plays=4, history='pbbp', cards=CARD_COMBOS[i]) == PBBP_RESULTS[i]
-    assert t.calculate_terminal_payoff(plays=4, history='pbbb', cards=CARD_COMBOS[i]) == PBBB_RESULTS[i]
-
-    assert t.calculate_terminal_payoff(plays=5, history='ppbpp', cards=CARD_COMBOS[i]) == PPBPP_RESULTS[i]
-    assert t.calculate_terminal_payoff(plays=5, history='ppbpb', cards=CARD_COMBOS[i]) == PPBPB_RESULTS[i]
-    assert t.calculate_terminal_payoff(plays=5, history='ppbbp', cards=CARD_COMBOS[i]) == PPBBP_RESULTS[i]
-    assert t.calculate_terminal_payoff(plays=5, history='ppbbb', cards=CARD_COMBOS[i]) == PPBBB_RESULTS[i]
+for i in range(2):
+    # Round 3
+    assert t.calculate_terminal_payoff(plays=3, history='ppp', cards=ROUND3[i]) == PPP_RESULTS[i]
+    assert t.calculate_terminal_payoff(plays=3, history='bpp', cards=ROUND3[i]) == BPP_RESULTS[i]
+    assert t.calculate_terminal_payoff(plays=3, history='bpb', cards=ROUND3[i]) == BPB_RESULTS[i]
+    assert t.calculate_terminal_payoff(plays=3, history='bbp', cards=ROUND3[i]) == BBP_RESULTS[i]
+    assert t.calculate_terminal_payoff(plays=3, history='bbb', cards=ROUND3[i]) == BBB_RESULTS[i]
+    # Round 4
+    assert t.calculate_terminal_payoff(plays=4, history='pbpp', cards=ROUND4[i]) == PBPP_RESULTS[i]
+    assert t.calculate_terminal_payoff(plays=4, history='pbpb', cards=ROUND4[i]) == PBPB_RESULTS[i]
+    assert t.calculate_terminal_payoff(plays=4, history='pbbp', cards=ROUND4[i]) == PBBP_RESULTS[i]
+    assert t.calculate_terminal_payoff(plays=4, history='pbbb', cards=ROUND4[i]) == PBBB_RESULTS[i]
+    # Round 5
+    assert t.calculate_terminal_payoff(plays=5, history='ppbpp', cards=ROUND5[i]) == PPBPP_RESULTS[i]
+    assert t.calculate_terminal_payoff(plays=5, history='ppbpb', cards=ROUND5[i]) == PPBPB_RESULTS[i]
+    assert t.calculate_terminal_payoff(plays=5, history='ppbbp', cards=ROUND5[i]) == PPBBP_RESULTS[i]
+    assert t.calculate_terminal_payoff(plays=5, history='ppbbb', cards=ROUND5[i]) == PPBBB_RESULTS[i]
