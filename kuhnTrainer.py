@@ -77,8 +77,6 @@ class KuhnTrainer:
         :param rp1: float     - reach probability of player 1 (pi)
         :return:
 
-
-
         """
         plays = len(history)
         player = plays % 2
@@ -168,7 +166,7 @@ class KuhnTrainer:
 
 
 def main():
-    iterations = 1000000
+    iterations = 10000
     KuhnTrainer().train(iterations)
 
 main()
