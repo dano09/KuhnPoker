@@ -6,11 +6,19 @@ import pandas as pd
 
 
 def setUpKuhnPokerGame(strat, best_response=None):
-    base_map = {i_s: mKuhnPoker.GameNode(info_set=i_s, strategy=strat[i_s]) for i_s in strat}
+    """
+    Prepare the strategies to be used for each info node. If a best_response strategy is provided,
+    then replace the base strategy positions with the best response positions
+    :param strat:  dict
+    :param best_response: dict
+    :return:
+    """
+    br_strategy = None
+    base_strategy = {i_s: mKuhnPoker.GameNode(info_set=i_s, strategy=strat[i_s]) for i_s in strat}
     if best_response:
-        br_nodes = {i_s: mKuhnPoker.GameNode(info_set=i_s, strategy=best_response[i_s]) for i_s in best_response}
+        br_strategy = {i_s: mKuhnPoker.GameNode(info_set=i_s, strategy=best_response[i_s]) for i_s in best_response}
 
-    return {**base_map, **br_nodes} if best_response else base_map
+    return {**base_strategy, **br_strategy} if best_response else base_strategy
 
 
 def play_kuhn_poker(base_strat, best_response_strat, iterations):
@@ -29,7 +37,7 @@ def calculate_utility(strat_df, br_player_df):
     df['avg'] = df.utility / df.plays
     # Repeat for best response
     df['avg_br'] = df.utility_br / df.plays_br
-    df['util_diff'] = df.avg - df.avg_br
+    df['util_diff'] = df.avg_br - df.avg
     # Average utility over all positions is our target utility
     #avg_utility = df.avg.sum() / df.shape[0]
     #br_avg_utility = df.avg_br.sum() / df.shape[0]
@@ -124,7 +132,8 @@ def main(iterations=100000, run_training=True, save_models=False, save_results=F
         kuhnHelper.save_results(player_results)
 
 
-main(iterations=1000000, run_training=False, save_models=False, save_results=False)
+#main(iterations=1000000, run_training=False, save_models=False, save_results=False)
+#main(iterations=1000000, run_training=True, save_models=True, save_results=True)
 
 
 s = kuhnHelper.load_trained_models()
@@ -133,13 +142,13 @@ br1_strat = s[1]
 br2_strat = s[2]
 br3_strat = s[3]
 
-#sdf = kuhnHelper.strat_df_builder(base_strat)
+sdf = kuhnHelper.strat_df_builder(base_strat)
 #sdf1 = kuhnHelper.strat_df_builder(br1_strat)
 #sdf2 = kuhnHelper.strat_df_builder(br2_strat)
 #sdf3 = kuhnHelper.strat_df_builder(br3_strat)
 
 #print('done')
-#results = kuhnHelper.load_results()
+results = kuhnHelper.load_results()
 #p1 = results[0]
 #p2 = results[1]
 #p3 = results[2]

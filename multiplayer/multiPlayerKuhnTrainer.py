@@ -105,7 +105,8 @@ class KuhnTrainer:
         if kuhnHelper.is_terminal_state(plays, history):
             # Terminal Utility is pre-defined for each player based on the current state
             utility = kuhnHelper.calculate_terminal_payoff(history, cards)
-            return utility[current_player]
+            prev_player = (plays - 1) % 3
+            return utility[prev_player]
 
         # Get information set node or create it if has not been visited yet
         info_set = str(cards[current_player]) + history
@@ -168,10 +169,10 @@ class KuhnTrainer:
         # index 0 will be card for player 1 (X)
         # index 1 will be card for player 2 (Y)
         # index 2 will be card for player 3 (Z)
-        cards = [3, 4, 1, 2]
+        cards = [1, 2, 3, 4]
         util = 0
         for _ in range(iterations):
-            shuffle(cards)
+            #shuffle(cards)
             util += self.cfr(cards, '', [1, 1, 1])
 
         print('Average game value: {}'.format(util / iterations))
@@ -184,3 +185,4 @@ class KuhnTrainer:
         return self._return_player_strats(strategy_profile)
 
 
+kt = KuhnTrainer().train(5)
