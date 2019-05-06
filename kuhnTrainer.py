@@ -77,6 +77,8 @@ class KuhnTrainer:
         :param rp1: float     - reach probability of player 1 (pi)
         :return:
 
+
+
         """
         plays = len(history)
         player = plays % 2
@@ -115,9 +117,9 @@ class KuhnTrainer:
         for a in range(0, self.NUM_ACTIONS):
             next_history = history + ('p' if a == 0 else 'b')
             if player == 0:
-                util[a] = rp1 * (- self.cfr(cards, next_history, rp0*strategy[a], rp1))
+                util[a] = - self.cfr(cards, next_history, rp0*strategy[a], rp1)
             else:
-                util[a] = rp0 * (- self.cfr(cards, next_history, rp0, rp1*strategy[a]))
+                util[a] = - self.cfr(cards, next_history, rp0, rp1*strategy[a])
 
             node_util += strategy[a] * util[a]
 
@@ -125,8 +127,8 @@ class KuhnTrainer:
         for a in range(0, self.NUM_ACTIONS):
             regret = util[a] - node_util
             # This also updates node_mapping
-            node.regret_sum[a] += regret
-            #node.regret_sum[a] += rp1 * regret if player == 0 else rp0 * regret
+            #node.regret_sum[a] += regret
+            node.regret_sum[a] += rp1 * regret if player == 0 else rp0 * regret
 
         return node_util
 
@@ -151,7 +153,8 @@ class KuhnTrainer:
         #cards = [1, 2, 3]
         c1 = [2, 3, 1]  # Test Case
         c2 = [2, 1, 3]  # Test Case
-        cards = [c1, c2]
+        c3 = [2, 1, 3]
+        cards = [c1]
         util = 0
         for i in range(iterations):
             #cards = self.shuffle_cards(cards)
@@ -166,7 +169,7 @@ class KuhnTrainer:
 
 
 def main():
-    iterations = 10000
+    iterations = 1000000
     KuhnTrainer().train(iterations)
 
 main()

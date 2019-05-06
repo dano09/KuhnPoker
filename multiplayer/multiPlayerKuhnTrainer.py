@@ -1,8 +1,7 @@
 from random import shuffle
 from collections import defaultdict
-from pprint import pprint
 from multiplayer import kuhnHelper
-import pickle
+import numpy as np
 
 # Aggressive - B
 B = 'BET'
@@ -18,7 +17,7 @@ Y = 1
 Z = 2
 
 
-class Node:
+class TrainerInfoSet:
     # Information set node class definition
     NUM_ACTIONS = 2
 
@@ -80,12 +79,13 @@ class KuhnTrainer:
     PASS = 0
     BEST = 1
     NUM_ACTIONS = 2
+    NUM_PLAYERS = 3
 
     def __init__(self, training_best_response=False, best_response_player=None, strategy_profile=None):
         self.training_best_response = training_best_response
         self.best_response_player = best_response_player
         self.strategy_profile = strategy_profile
-        self.node_map = defaultdict(Node)
+        self.node_map = defaultdict(TrainerInfoSet)
 
     def cfr(self, cards, history, reach_probabilities):
         """
@@ -93,20 +93,23 @@ class KuhnTrainer:
         :param cards:   list[int] -
         :param history: string    -
         :param reach_probabilities: list [ float ] - probability of action for players 1, 2, 3
+        :param
 
-        :return:
+        :return: terminal_utilities: dict {str: list[int]}
         """
         plays = len(history)
         current_player = plays % 3
         rp0, rp1, rp2 = reach_probabilities
         util = [0.0] * self.NUM_ACTIONS
         node_util = 0.0
+        terminal_utilities = np.zeros(self.NUM_PLAYERS)
 
         if kuhnHelper.is_terminal_state(plays, history):
             # Terminal Utility is pre-defined for each player based on the current state
             utility = kuhnHelper.calculate_terminal_payoff(history, cards)
             prev_player = (plays - 1) % 3
-            return utility[prev_player]
+            return utility
+            #return utility[prev_player]
 
         # Get information set node or create it if has not been visited yet
         info_set = str(cards[current_player]) + history
@@ -123,13 +126,20 @@ class KuhnTrainer:
             # For each action, recursively call cfr with additional history and probability
             next_history = history + ('p' if a == 0 else 'b')
             if current_player == 0:
-                util[a] = self.cfr(cards, next_history, [rp0 * strategy[a], rp1, rp2])
+                child_utilities = self.cfr(cards, next_history, [rp0 * strategy[a], rp1, rp2])
             elif current_player == 1:
-                util[a] = self.cfr(cards, next_history, [rp0, rp1 * strategy[a], rp2])
+                child_utilities = self.cfr(cards, next_history, [rp0, rp1 * strategy[a], rp2])
             else:  # Player 2
-                util[a] = self.cfr(cards, next_history, [rp0, rp1, rp2 * strategy[a]])
+                child_utilities = self.cfr(cards, next_history, [rp0, rp1, rp2 * strategy[a]])
 
-            node_util += strategy[a] * util[a]
+            # Calculating CFR for the current infoset
+            util[a] = child_utilities[current_player]
+
+            # Used to pass up to parent infoset
+            weighted_utilities = [strategy[a] * z for z in child_utilities]
+            terminal_utilities = np.add(terminal_utilities, weighted_utilities)
+
+        node_util = terminal_utilities[current_player]
 
         # For each action, compute and accumulate counterfactual regret
         for i in range(0, self.NUM_ACTIONS):
@@ -142,8 +152,7 @@ class KuhnTrainer:
             else:
                 node.regret_sum[i] += rp1 * regret
 
-        # Non-Terminal Utility should be negated since the perspective changes between players
-        return -node_util
+        return terminal_utilities
 
     def _return_player_strats(self, strategy_profile):
         # Player 1, 2, and 3's betting strategies
@@ -172,7 +181,7 @@ class KuhnTrainer:
         cards = [1, 2, 3, 4]
         util = 0
         for _ in range(iterations):
-            #shuffle(cards)
+            shuffle(cards)
             util += self.cfr(cards, '', [1, 1, 1])
 
         print('Average game value: {}'.format(util / iterations))
@@ -185,4 +194,4 @@ class KuhnTrainer:
         return self._return_player_strats(strategy_profile)
 
 
-kt = KuhnTrainer().train(5)
+#kt = KuhnTrainer().train(5)

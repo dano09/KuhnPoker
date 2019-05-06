@@ -3,6 +3,8 @@ import pandas as pd
 
 # Some helper functions for multiplayer Kuhn Poker
 # Player 1 (or X)
+
+
 X = 0
 # Player 2 (or Y)
 Y = 1
@@ -12,7 +14,7 @@ Z = 2
 #MODEL_DIR = 'C:/Users/Justin/PycharmProjects/KuhnPoker/saved_strats/'
 MODEL_DIR = '../saved_strats/'
 TRAINED_MODEL_FILES = ['strat_profile.p', 'p1_br.p', 'p2_br.p', 'p3_br.p']
-PLAYER_RESULT_FILES = ['p1_results.p', 'p2_results.p', 'p3_results.p']
+PLAYER_RESULT_FILES = ['p1_results.p', 'p2_results.p', 'p3_results.p', 'cfr_br_df.p']
 
 
 def save_trained_models(models):
@@ -149,3 +151,25 @@ def get_positions_from_strategy_profile(strategy_profile):
     p2 = {i: strategy_profile[i] for i in strategy_profile if len(i) == 2 or len(i) == 5}
     p3 = {i: strategy_profile[i] for i in strategy_profile if len(i) == 3}
     return p1, p2, p3
+
+
+def view_results():
+    s = load_trained_models()
+    base_strat = s[0]
+    br1_strat = s[1]
+    br2_strat = s[2]
+    br3_strat = s[3]
+
+    sdf = strat_df_builder(base_strat)
+    #sdf1 = strat_df_builder(br1_strat)
+    #sdf2 = strat_df_builder(br2_strat)
+    #sdf3 = strat_df_builder(br3_strat)
+
+    results = load_results()
+    #results[0]  #Player 1 Strat
+    #results[1]  #Player 2 Strat
+    #results[2]  #Player 3 Strat
+    results[3]  # CFR
+    #print(results)
+    # from multiplayer.main import calculate_nash_equilibrium
+    #cf_br, e = calculate_nash_equilibrium(results)

@@ -14,9 +14,9 @@ def setUpKuhnPokerGame(strat, best_response=None):
     :return:
     """
     br_strategy = None
-    base_strategy = {i_s: mKuhnPoker.GameNode(info_set=i_s, strategy=strat[i_s]) for i_s in strat}
+    base_strategy = {i_s: mKuhnPoker.GameInfoSet(info_set=i_s, strategy=strat[i_s]) for i_s in strat}
     if best_response:
-        br_strategy = {i_s: mKuhnPoker.GameNode(info_set=i_s, strategy=best_response[i_s]) for i_s in best_response}
+        br_strategy = {i_s: mKuhnPoker.GameInfoSet(info_set=i_s, strategy=best_response[i_s]) for i_s in best_response}
 
     return {**base_strategy, **br_strategy} if best_response else base_strategy
 
@@ -46,6 +46,17 @@ def calculate_utility(strat_df, br_player_df):
     return df, avg_util_diff
 
 
+def calculate_nash_equilibrium(player_results):
+    cfr = {'p1': player_results[0][0].avg.sum(), 'p2': player_results[1][0].avg.sum(),
+           'p3': player_results[2][0].avg.sum()}
+    br = {'p1': player_results[0][0].avg_br.sum(), 'p2': player_results[1][0].avg_br.sum(),
+          'p3': player_results[2][0].avg_br.sum()}
+    cfr_results_df = pd.DataFrame(data=[cfr, br], index=['CFR', 'BR'])
+    cfr_results_df.loc['diff'] = cfr_results_df.loc['BR'] - cfr_results_df.loc['CFR']
+    epsilon = cfr_results_df.loc['diff'].mean(axis=0)
+    return cfr_results_df, epsilon
+
+
 def train(iterations=100, save_training=False):
     """
     TODO
@@ -72,6 +83,7 @@ def train(iterations=100, save_training=False):
         kuhnHelper.save_trained_models([strategy_profiles, p1_br, p2_br, p3_br])
     print('Training complete')
     return strategy_profiles, p1_br, p2_br, p3_br
+
 
 
 def main(iterations=100000, run_training=True, save_models=False, save_results=False):
@@ -118,39 +130,16 @@ def main(iterations=100000, run_training=True, save_models=False, save_results=F
     br_strat_profile_df = [kuhnHelper.df_builder(r) for r in br_results]
     player_results = [calculate_utility(strat_profile_df, br_profile) for br_profile in br_strat_profile_df]
 
-    cfr = {'p1': player_results[0][0].avg.sum(), 'p2': player_results[1][0].avg.sum(),
-           'p3': player_results[2][0].avg.sum()}
-
-    br = {'p1': player_results[0][0].avg_br.sum(), 'p2': player_results[1][0].avg_br.sum(),
-           'p3': player_results[2][0].avg_br.sum()}
-
-    cfr_results_df = pd.DataFrame(data=[cfr, br], index=['CFR', 'BR'])
-    cfr_results_df.loc['diff'] = cfr_results_df.loc['BR'] - cfr_results_df.loc['CFR']
-    epsilon = cfr_results_df.loc['diff'].mean(axis=0)
+    cfr_br_df, epsilon = calculate_nash_equilibrium(player_results)
 
     if save_results:
+        player_results.append(cfr_br_df)
         kuhnHelper.save_results(player_results)
 
-
-#main(iterations=1000000, run_training=False, save_models=False, save_results=False)
-#main(iterations=1000000, run_training=True, save_models=True, save_results=True)
+    return cfr_br_df, epsilon
 
 
-s = kuhnHelper.load_trained_models()
-base_strat = s[0]
-br1_strat = s[1]
-br2_strat = s[2]
-br3_strat = s[3]
+cfr_br_df, epsilon = main(iterations=10000000, run_training=True, save_models=True, save_results=True)
+#cfr_br_df, epsilon = main(iterations=100, run_training=False, save_models=False, save_results=False)
 
-sdf = kuhnHelper.strat_df_builder(base_strat)
-#sdf1 = kuhnHelper.strat_df_builder(br1_strat)
-#sdf2 = kuhnHelper.strat_df_builder(br2_strat)
-#sdf3 = kuhnHelper.strat_df_builder(br3_strat)
 
-#print('done')
-results = kuhnHelper.load_results()
-#p1 = results[0]
-#p2 = results[1]
-#p3 = results[2]
-
-#print(results)
