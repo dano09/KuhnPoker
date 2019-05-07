@@ -1,38 +1,47 @@
 import pickle
 import pandas as pd
+import matplotlib as mlb
+import matplotlib.pyplot as plt
+import os
+mlb.style.use('seaborn')
 
-# Some helper functions for multiplayer Kuhn Poker
-# Player 1 (or X)
-
-
-X = 0
-# Player 2 (or Y)
-Y = 1
-# Player 3 (or Z)
-Z = 2
-
-#MODEL_DIR = 'C:/Users/Justin/PycharmProjects/KuhnPoker/saved_strats/'
-MODEL_DIR = '../saved_strats/'
-TRAINED_MODEL_FILES = ['strat_profile.p', 'p1_br.p', 'p2_br.p', 'p3_br.p']
+PLAYER1 = 0
+PLAYER2 = 1
+PLAYER3 = 2
+GRAPHS_DIR = '/graphs/'
+STRATS_DIR = '/trained_strategies/'
+RESULTS_DIR = '/results/'
+TRAINED_MODEL_FILES = ['cfr_strategy.p', 'p1_br_strategy.p', 'p2_br_strategy.p', 'p3_br_strategy.p']
 PLAYER_RESULT_FILES = ['p1_results.p', 'p2_results.p', 'p3_results.p', 'cfr_br_df.p']
 
 
-def save_trained_models(models):
-    for obj, name in zip(models, TRAINED_MODEL_FILES):
-        pickle.dump(obj, open(MODEL_DIR + name, 'wb'))
+def save_results(results, file_names, base_dir, file_dir):
+    os.makedirs(base_dir+'/'+file_dir, exist_ok=True)
+
+    for obj, name in zip(results, file_names):
+        pickle.dump(obj, open(base_dir + file_dir + name, 'wb'))
 
 
-def load_trained_models():
-    return [pickle.load(open(MODEL_DIR + obj, 'rb')) for obj in TRAINED_MODEL_FILES]
+def load_trained_models(directory):
+    """
+    If we want to load from REPL
+    BASE_DIR = 'C:/Users/Justin/PycharmProjects/KuhnPoker/multiplayer'
+    TS = '2019_05_07_16_10'
+    res = load_trained_models(BASE_DIR + TS)
+
+    :param directory: str
+    :return:
+    """
+    return [pickle.load(open(directory + STRATS_DIR + obj, 'rb')) for obj in TRAINED_MODEL_FILES]
 
 
-def save_results(results):
-    for obj, name in zip(results, PLAYER_RESULT_FILES):
-        pickle.dump(obj, open(MODEL_DIR + name, 'wb'))
-
-
-def load_results():
-    return [pickle.load(open(MODEL_DIR + obj, 'rb')) for obj in PLAYER_RESULT_FILES]
+def load_results(directory):
+    """
+    Same applies as load_trained_models
+    :param directory: str
+    :return:
+    """
+    return [pickle.load(open(directory + RESULTS_DIR + obj, 'rb')) for obj in PLAYER_RESULT_FILES]
 
 
 def df_builder(results):
@@ -97,12 +106,12 @@ def calculate_terminal_payoff(history, cards):
     util = [-1, -1, -1]
 
     if history == 'ppp':
-        if cards[X] > max(cards[Y], cards[Z]):
-            util[X] = 2
-        elif cards[Y] > max(cards[X], cards[Z]):
-            util[Y] = 2
+        if cards[PLAYER1] > max(cards[PLAYER2], cards[PLAYER3]):
+            util[PLAYER1] = 2
+        elif cards[PLAYER2] > max(cards[PLAYER1], cards[PLAYER3]):
+            util[PLAYER2] = 2
         else:
-            util[Z] = 2
+            util[PLAYER3] = 2
 
     elif history.count('b') == 1:
         winner = history.index('b') % 3
@@ -119,9 +128,9 @@ def calculate_terminal_payoff(history, cards):
             util[sec_bet] = 3
 
     elif history.count('b') == 3:
-        if cards[X] > max(cards[Y], cards[Z]):
+        if cards[PLAYER1] > max(cards[PLAYER2], cards[PLAYER3]):
             util = [4, -2, -2]
-        elif cards[Y] > max(cards[X], cards[Z]):
+        elif cards[PLAYER2] > max(cards[PLAYER1], cards[PLAYER3]):
             util = [-2, 4, -2]
         else:
             util = [-2, -2, 4]
@@ -131,11 +140,11 @@ def calculate_terminal_payoff(history, cards):
 
 def determine_player_from_infoset(info_set):
     if len(info_set) == 1 or len(info_set) == 4:
-        return X
+        return PLAYER1
     elif len(info_set) == 2 or len(info_set) == 5:
-        return Y
+        return PLAYER2
     elif len(info_set) == 3:
-        return Z
+        return PLAYER3
     else:
         raise Exception('Invalid InfoSet')
 
@@ -151,6 +160,37 @@ def get_positions_from_strategy_profile(strategy_profile):
     p2 = {i: strategy_profile[i] for i in strategy_profile if len(i) == 2 or len(i) == 5}
     p3 = {i: strategy_profile[i] for i in strategy_profile if len(i) == 3}
     return p1, p2, p3
+
+
+def plot_training(node_map, base_dir):
+    histories = ['', 'p', 'b', 'pp', 'pb', 'bp', 'bb', 'ppb', 'pbp', 'pbb', 'ppbp', 'ppbb']
+    for h in histories:
+        plot_strategy(node_map, h, base_dir)
+
+
+def plot_strategy(node_map, history='', base_dir=None):
+    cards = ['1', '2', '3', '4']
+    fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(8, 4))
+
+    for card in cards:
+        infoset = card+history
+        dfs = pd.DataFrame([{'Bet': i[1], 'Pass': i[0]} for i in node_map[infoset].strategy_list])
+        dfr = pd.DataFrame([{'Bet': i[1], 'Pass': i[0]} for i in node_map[infoset].regret_list])
+
+        dfs.plot(ax=axes[0, cards.index(card)], legend=False, title=infoset)
+        dfr.plot(ax=axes[1, cards.index(card)], legend=False)
+
+    for ax, row in zip(axes[:, 0], ['Strategy', 'Regret']):
+        ax.set_ylabel(row, rotation=90)
+
+    axes[0, 0].legend()
+    plt.tight_layout()
+
+    # Create directory and save figure
+    os.makedirs(base_dir + '/' + GRAPHS_DIR, exist_ok=True)
+    graph_name = '_training_strat.png'
+    graph_name = graph_name if history == '' else history + graph_name
+    plt.savefig(base_dir + '/' + GRAPHS_DIR + graph_name)
 
 
 def view_results():

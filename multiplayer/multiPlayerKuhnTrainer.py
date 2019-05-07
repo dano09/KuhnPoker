@@ -2,6 +2,11 @@ from random import shuffle
 from collections import defaultdict
 from multiplayer import kuhnHelper
 import numpy as np
+import pandas as pd
+import matplotlib as mlb
+import matplotlib.pyplot as plt
+mlb.style.use('seaborn')
+
 
 # Aggressive - B
 B = 'BET'
@@ -21,11 +26,14 @@ class TrainerInfoSet:
     # Information set node class definition
     NUM_ACTIONS = 2
 
-    def __init__(self, info_set=''):
+    def __init__(self, info_set='', gen_graphs=False):
         # Kuhn Node Definitions
         self.info_set = info_set
         self.regret_sum = [0] * self.NUM_ACTIONS
         self.strategy_sum = [0] * self.NUM_ACTIONS
+        self.gen_graphs = gen_graphs
+        self.regret_list = []
+        self.strategy_list = []
 
     def get_strategy(self, realization_weight):
         """
@@ -46,6 +54,9 @@ class TrainerInfoSet:
                 strategy[i] = 1.0 / self.NUM_ACTIONS
 
             self.strategy_sum[i] += realization_weight * strategy[i]
+
+        if self.gen_graphs:
+            self.strategy_list.append(self.get_average_strategy())
 
         return strategy
 
@@ -81,11 +92,13 @@ class KuhnTrainer:
     NUM_ACTIONS = 2
     NUM_PLAYERS = 3
 
-    def __init__(self, training_best_response=False, best_response_player=None, strategy_profile=None):
+    def __init__(self, training_best_response=False, best_response_player=None, strategy_profile=None, generate_graphs=False, base_dir=None):
         self.training_best_response = training_best_response
         self.best_response_player = best_response_player
         self.strategy_profile = strategy_profile
-        self.node_map = defaultdict(TrainerInfoSet)
+        self.node_map = {}
+        self.gen_graphs = generate_graphs
+        self.base_dir = base_dir
 
     def cfr(self, cards, history, reach_probabilities):
         """
@@ -101,26 +114,27 @@ class KuhnTrainer:
         current_player = plays % 3
         rp0, rp1, rp2 = reach_probabilities
         util = [0.0] * self.NUM_ACTIONS
-        node_util = 0.0
         terminal_utilities = np.zeros(self.NUM_PLAYERS)
 
         if kuhnHelper.is_terminal_state(plays, history):
             # Terminal Utility is pre-defined for each player based on the current state
             utility = kuhnHelper.calculate_terminal_payoff(history, cards)
-            prev_player = (plays - 1) % 3
             return utility
-            #return utility[prev_player]
 
         # Get information set node or create it if has not been visited yet
         info_set = str(cards[current_player]) + history
-        node = self.node_map[info_set]
+        if info_set in self.node_map:
+            info_set_node = self.node_map[info_set]
+        else:
+            info_set_node = TrainerInfoSet(info_set, self.gen_graphs)
+            self.node_map[info_set] = info_set_node
 
         # Best Response Strategies for opponents are pre-defined and provided to the class.
         if self.training_best_response and self.best_response_player != current_player:
             strategy = self.strategy_profile[info_set]
         else:
             # Get updated strategy based on cumulative regret
-            strategy = node.get_strategy(reach_probabilities[current_player])
+            strategy = info_set_node.get_strategy(reach_probabilities[current_player])
 
         for a in range(0, self.NUM_ACTIONS):
             # For each action, recursively call cfr with additional history and probability
@@ -146,11 +160,14 @@ class KuhnTrainer:
             regret = util[i] - node_util
             # CFR is multiplied by reach probability (from previous player) of getting to the current state
             if current_player == 0:
-                node.regret_sum[i] += rp2 * regret
+                info_set_node.regret_sum[i] += rp2 * regret
             elif current_player == 1:
-                node.regret_sum[i] += rp0 * regret
+                info_set_node.regret_sum[i] += rp0 * regret
             else:
-                node.regret_sum[i] += rp1 * regret
+                info_set_node.regret_sum[i] += rp1 * regret
+
+        if self.gen_graphs:
+            info_set_node.regret_list.append(info_set_node.regret_sum.copy())
 
         return terminal_utilities
 
@@ -191,7 +208,7 @@ class KuhnTrainer:
             strategy_profile[info_set] = [round(avg_strat[0], 4), round(avg_strat[1], 4)]
             #print('info_set is: {0} and average strategy for Pass: {1:.4f} Bet: {2:.4f}'.format(node.info_set, avg_strat[0], avg_strat[1]))
 
+        if self.gen_graphs:
+            kuhnHelper.plot_training(self.node_map, self.base_dir)
+
         return self._return_player_strats(strategy_profile)
-
-
-#kt = KuhnTrainer().train(5)
