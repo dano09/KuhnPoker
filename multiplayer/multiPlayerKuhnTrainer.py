@@ -192,9 +192,6 @@ class KuhnTrainer:
         :return:
         """
         strategy_profile = {}
-        # index 0 will be card for player 1 (X)
-        # index 1 will be card for player 2 (Y)
-        # index 2 will be card for player 3 (Z)
         cards = [1, 2, 3, 4]
         util = 0
         for _ in range(iterations):

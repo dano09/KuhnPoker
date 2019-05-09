@@ -1,4 +1,3 @@
-from pprint import pprint
 from multiplayer import kuhnHelper
 from multiplayer import multiPlayerKuhnTrainer as mKuhnTrainer
 from multiplayer import multiPlayerKuhnPoker as mKuhnPoker
@@ -40,9 +39,9 @@ def play_kuhn_poker(base_strat, best_response_strat, iterations):
 
 def calculate_utility(strat_df, br_player_df):
     # Join the CFR utilities with the best response utilities for one of the players
-    df = strat_df.join(br_player_df, how='right', rsuffix='_br')
+    df = strat_df.join(br_player_df, how='right', lsuffix='_cfr', rsuffix='_br')
     # Calculate utility (antes/hand) for each position
-    df['avg'] = df.utility / df.plays
+    df['avg_cfr'] = df.utility_cfr / df.plays_cfr
     # Repeat for best response
     df['avg_br'] = df.utility_br / df.plays_br
 
@@ -50,7 +49,7 @@ def calculate_utility(strat_df, br_player_df):
 
 
 def calculate_nash_equilibrium(util_results):
-    cfr = {'p1': util_results[0].avg.mean(), 'p2': util_results[1].avg.mean(), 'p3': util_results[2].avg.mean()}
+    cfr = {'p1': util_results[0].avg_cfr.mean(), 'p2': util_results[1].avg_cfr.mean(), 'p3': util_results[2].avg_cfr.mean()}
     br = {'p1': util_results[0].avg_br.mean(), 'p2': util_results[1].avg_br.mean(), 'p3': util_results[2].avg_br.mean()}
     cfr_results_df = pd.DataFrame(data=[cfr, br], index=['CFR', 'BR'])
     cfr_results_df.loc['diff'] = cfr_results_df.loc['BR'] - cfr_results_df.loc['CFR']
@@ -60,8 +59,8 @@ def calculate_nash_equilibrium(util_results):
 
 def train(iterations=100, gen_graphs=False, base_dir=None):
     """
-    TODO
-    :return:
+    Performs training to generate CFR strategy profile. Then it computes the best response strategy for each player
+    while the opponents strategy do not change.
     """
     # 1) Generate a strategy profile using CFR
     print('Training Strategy Profile, this may take some time')
@@ -88,7 +87,8 @@ def train(iterations=100, gen_graphs=False, base_dir=None):
     return cfr_strategy_profiles, p1_br, p2_br, p3_br
 
 
-def main(iterations=100000, run_training=True, training_mod_dir=None, save_models=False, save_results=False, gen_graphs=False):
+def main(iterations=100000, run_training=True, training_mod_dir=None,
+         save_models=False, save_results=False, gen_graphs=False, gen_report=False):
     """
     Determine if CFR generated strategy profile is epsilon-Nash Equilibrium
     1) Generate a strategy profile using CFR
@@ -100,53 +100,62 @@ def main(iterations=100000, run_training=True, training_mod_dir=None, save_model
         extra the BR strategy wins in each position
     6) If the best response strategy profile does not improve by more than an epsilon AVERAGED over all positions, then
         our original strategy profile is an epsilon-Nash Equilibrium
+
+    :param iterations:       int  - only required parameter, the number of iterations to train
+    :param run_training:     bool - do simulation with pre-trained models (training can take awhile)
+    :param training_mod_dir: str  - if run_training=False, this is required. The directory where trained models are
+    :param save_models:      bool - when set to True, you save the trained model (serialized via pickle)
+    :param save_results:     bool - you can also save the results of the simulations
+    :param gen_graphs:       bool - generate graphs that show how the strategy evolves with regret accumulation
+                                    WARNING: this is not optimized. Space complexity: O(iterations*48)
+    :param gen_report:       bool - creates an excel report with CFR strategy, BR strategy, and simulation results
+
     :return:
     """
-    if save_models or save_results or gen_graphs:
-        # Creates a unique directory for models, graphs and results
-        timestamp = datetime.now().strftime('%Y_%m_%d_%H_%M')
+    timestamp = datetime.now().strftime('%Y_%m_%d_%H_%M')
+    if save_models or save_results or gen_graphs or gen_report:
+        # only create a directory if we are persisting something
         os.makedirs(timestamp, exist_ok=True)
 
     # Step 1 & 2 - done in train method
     if run_training:
-        strategy_profiles, *best_responses = train(iterations, gen_graphs=gen_graphs, base_dir=timestamp)
+        cfr_strategy, *br_strategies = train(iterations, gen_graphs=gen_graphs, base_dir=timestamp)
 
         if save_models:
-            res = [strategy_profiles, *best_responses]
+            res = [cfr_strategy, *br_strategies]
             kuhnHelper.save_results(results=res, file_names=TRAINED_MODEL_FILES, base_dir=timestamp, file_dir=STRATS_DIR)
 
     else:
-        strategy_profiles, *best_responses = kuhnHelper.load_trained_models(training_mod_dir)
+        cfr_strategy, *br_strategies = kuhnHelper.load_trained_models(training_mod_dir)
 
     # 3) Compute utilities for each position of the strategy profile by playing three strategies against each other
-
     print('Playing Kuhn Poker with base strategy')
-    cfr_game_results = play_kuhn_poker(base_strat=strategy_profiles, best_response_strat=None, iterations=iterations)
+    cfr_game_results = play_kuhn_poker(base_strat=cfr_strategy, best_response_strat=None, iterations=iterations)
 
     # 4) Compute the utilities of the best response in each position by playing one BR strategy
     #    against two ordinary strategies
-
     print('Playing Kuhn Poker with best response strategies')
-    br_game_results = [play_kuhn_poker(base_strat=strategy_profiles, best_response_strat=br, iterations=iterations) for br in best_responses]
+    br_game_results = [play_kuhn_poker(base_strat=cfr_strategy, best_response_strat=br, iterations=iterations) for br in br_strategies]
 
     # 5) Compare the BR strategy utilities in each position to the original strategies utilities to determine how much
     #    extra the BR strategy wins in each position
-
     cfr_game_results_df = kuhnHelper.df_builder(cfr_game_results)
     br_game_results_df = [kuhnHelper.df_builder(r) for r in br_game_results]
 
     player_results = [calculate_utility(cfr_game_results_df, br_profile) for br_profile in br_game_results_df]
-
     cfr_br_df, epsilon = calculate_nash_equilibrium(player_results)
+    player_results.extend([cfr_br_df, epsilon])
 
     if save_results:
-        player_results.extend([cfr_br_df, epsilon])
         kuhnHelper.save_results(results=player_results, file_names=PLAYER_RESULT_FILES, base_dir=timestamp, file_dir=RESULTS_DIR)
 
-    return cfr_br_df, epsilon
+    if gen_report:
+        kuhnHelper.make_excel(cfr_strategy, br_strategies, player_results, base_dir=timestamp)
+
+    return cfr_strategy, br_strategies, player_results
 
 
-cfr_br_df, epsilon = main(iterations=100000, run_training=True, save_models=True, save_results=True, gen_graphs=True)
+res = main(iterations=100, run_training=True, save_models=True, save_results=True, gen_graphs=False, gen_report=True)
 
 
 #cfr_br_df, epsilon = main(iterations=1000,
