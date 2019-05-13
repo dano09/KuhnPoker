@@ -16,11 +16,11 @@ STRATS_DIR = '/trained_strategies/'
 RESULTS_DIR = '/results/'
 TRAINED_MODEL_FILES = ['cfr_strategy.p', 'p1_br_strategy.p', 'p2_br_strategy.p', 'p3_br_strategy.p']
 PLAYER_RESULT_FILES = ['p1_results.p', 'p2_results.p', 'p3_results.p', 'cfr_br_df.p']
-
+CARDS = ['1', '2', '3', '4']
+HISTORIES = ['', 'p', 'b', 'pp', 'pb', 'bp', 'bb', 'ppb', 'pbp', 'pbb', 'ppbp', 'ppbb']
 
 def save_results(results, file_names, base_dir, file_dir):
     os.makedirs(base_dir+'/'+file_dir, exist_ok=True)
-
     for obj, name in zip(results, file_names):
         pickle.dump(obj, open(base_dir + file_dir + name, 'wb'))
 
@@ -165,23 +165,77 @@ def get_positions_from_strategy_profile(strategy_profile):
     return p1, p2, p3
 
 
-def plot_training(node_map, base_dir):
-    histories = ['', 'p', 'b', 'pp', 'pb', 'bp', 'bb', 'ppb', 'pbp', 'pbb', 'ppbp', 'ppbb']
-    for h in histories:
-        plot_strategy(node_map, h, base_dir)
+def _save_training_data(info_set_data, dir):
+    for h in HISTORIES:
+        for card in CARDS:
+            cur_info_set = card + h
+            current_infoset = info_set_data[cur_info_set]
+            fs = open(dir + '/' + cur_info_set + '_strat.csv', 'w', newline='')
+            fs.write(current_infoset.strat_output.getvalue())
+            fs.close()
+            f2 = open(dir + '/' + cur_info_set + '_regret.csv', 'w', newline='')
+            f2.write(current_infoset.regret_output.getvalue())
+            f2.close()
+            #with open(dir + 'some.csv', 'w', newline='') as f:
+                #writer = csv.writer(f)
+                #current_infoset.strat_csv_writer.
+
+    #with open(dir + 'some.csv', 'w', newline='') as f:
+    #    current_infoset = info_set_data[infoset]
+    #    current_infoset.strat_output.seek(0)
+    #    current_infoset.regret_output.seek(0)
+
+
+def plot_training(base_dir):
+    for h in HISTORIES:
+        fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(8, 4))
+        for c in CARDS:
+            infoset = c + h
+            s_csv_file = base_dir + '/' + infoset + '_strat.csv'
+            r_csv_file = base_dir + '/' + infoset + '_regret.csv'
+
+            dfs = pd.read_csv(s_csv_file, names=['pass', 'bet'])
+            dfr = pd.read_csv(r_csv_file, names=['pass', 'bet'])
+            dfs.plot(ax=axes[0, CARDS.index(c)], legend=False, title=infoset)
+            dfr.plot(ax=axes[1, CARDS.index(c)], legend=False)
+            axes[1, CARDS.index(c)].set_ylim(-10, max(dfr['pass'].max(), dfr['bet'].max()))
+        for ax, row in zip(axes[:, 0], ['Strategy', 'Regret']):
+            ax.set_ylabel(row, rotation=90)
+
+        axes[0, 0].legend()
+        plt.tight_layout()
+
+        # Create directory and save figure
+        os.makedirs(base_dir + '/' + GRAPHS_DIR, exist_ok=True)
+        graph_name = '_training.png'
+        graph_name = graph_name if h == '' else h + graph_name
+        plt.savefig(base_dir + '/' + GRAPHS_DIR + graph_name)
+
+
+
+#def plot_training(node_map, base_dir):
+#    for h in HISTORIES:
+#        plot_strategy(node_map, h, base_dir)
 
 
 def plot_strategy(node_map, history='', base_dir=None):
-    cards = ['1', '2', '3', '4']
+    #cards = ['1', '2', '3', '4']
     fig, axes = plt.subplots(nrows=2, ncols=4, figsize=(8, 4))
 
-    for card in cards:
+    for card in CARDS:
         infoset = card+history
-        dfs = pd.DataFrame([{'Bet': i[1], 'Pass': i[0]} for i in node_map[infoset].strategy_list])
-        dfr = pd.DataFrame([{'Bet': i[1], 'Pass': i[0]} for i in node_map[infoset].regret_list])
-
-        dfs.plot(ax=axes[0, cards.index(card)], legend=False, title=infoset)
-        dfr.plot(ax=axes[1, cards.index(card)], legend=False)
+        current_infoset = node_map[infoset]
+        current_infoset.strat_output.seek(0)
+        current_infoset.regret_output.seek(0)
+        dfs = pd.read_csv(current_infoset.strat_output, names=['pass', 'bet'])
+        dfr = pd.read_csv(current_infoset.regret_output, names=['pass', 'bet'])
+        #dfs = pd.DataFrame(node_map[infoset].strategy_list)
+        #dfr = pd.DataFrame(node_map[infoset].regret_list)
+        dfs.plot(ax=axes[0, CARDS.index(card)], legend=False, title=infoset)
+        dfr.plot(ax=axes[1, CARDS.index(card)], legend=False)
+        axes[1, CARDS.index(card)].set_ylim(-5, 3)
+        node_map[infoset].strategy_list = None
+        node_map[infoset].regret_list = None
 
     for ax, row in zip(axes[:, 0], ['Strategy', 'Regret']):
         ax.set_ylabel(row, rotation=90)
@@ -194,6 +248,8 @@ def plot_strategy(node_map, history='', base_dir=None):
     graph_name = '_training_strat.png'
     graph_name = graph_name if history == '' else history + graph_name
     plt.savefig(base_dir + '/' + GRAPHS_DIR + graph_name)
+
+    dfs = dfr = None
 
 
 def _pivot_data(df, info_set):
@@ -265,8 +321,6 @@ def _transform_data(cfr_strategy, br_strategies, player_result):
     return re
 
 
-
-
 def make_excel(cfr_strategy, br_strategies, player_results, base_dir):
     """
     Creates Excel Report
@@ -330,3 +384,6 @@ def make_excel(cfr_strategy, br_strategies, player_results, base_dir):
 
     writer.save()
 
+
+
+#plot_training('2019_05_12_11_19')

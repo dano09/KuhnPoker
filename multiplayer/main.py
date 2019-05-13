@@ -29,6 +29,13 @@ def setup_kuhn_poker_game(strategy, best_response=None):
 
 
 def play_kuhn_poker(base_strat, best_response_strat, iterations):
+    """
+
+    :param base_strat:
+    :param best_response_strat:
+    :param iterations:
+    :return:
+    """
     node_map = setup_kuhn_poker_game(base_strat, best_response_strat)
     results = mKuhnPoker.KuhnPoker(node_map).play_poker(iterations)
     if best_response_strat:
@@ -38,6 +45,12 @@ def play_kuhn_poker(base_strat, best_response_strat, iterations):
 
 
 def calculate_utility(strat_df, br_player_df):
+    """
+
+    :param strat_df:
+    :param br_player_df:
+    :return:
+    """
     # Join the CFR utilities with the best response utilities for one of the players
     df = strat_df.join(br_player_df, how='right', lsuffix='_cfr', rsuffix='_br')
     # Calculate utility (antes/hand) for each position
@@ -49,18 +62,43 @@ def calculate_utility(strat_df, br_player_df):
 
 
 def calculate_nash_equilibrium(util_results):
-    cfr = {'p1': util_results[0].avg_cfr.mean(), 'p2': util_results[1].avg_cfr.mean(), 'p3': util_results[2].avg_cfr.mean()}
-    br = {'p1': util_results[0].avg_br.mean(), 'p2': util_results[1].avg_br.mean(), 'p3': util_results[2].avg_br.mean()}
+    """
+
+    :param util_results:
+    :return:
+    """
+    cfr = {'p1': util_results[0].utility_cfr.sum() / util_results[0].plays_cfr.sum(),
+           'p2': util_results[1].utility_cfr.sum() / util_results[1].plays_cfr.sum(),
+           'p3': util_results[2].utility_cfr.sum() / util_results[2].plays_cfr.sum()}
+
+    br = {'p1': util_results[0].utility_br.sum() / util_results[0].plays_br.sum(),
+          'p2': util_results[1].utility_br.sum() / util_results[1].plays_br.sum(),
+          'p3': util_results[2].utility_br.sum() / util_results[2].plays_br.sum()}
+
     cfr_results_df = pd.DataFrame(data=[cfr, br], index=['CFR', 'BR'])
     cfr_results_df.loc['diff'] = cfr_results_df.loc['BR'] - cfr_results_df.loc['CFR']
     epsilon = cfr_results_df.loc['diff'].mean(axis=0)
     return cfr_results_df, epsilon
 
 
+def train_cfr(iterations=100):
+    timestamp = datetime.now().strftime('%Y_%m_%d_%H_%M')
+    os.makedirs(timestamp, exist_ok=True)
+    cfr_trainer = mKuhnTrainer.KuhnTrainer(training_best_response=False, generate_graphs=True, base_dir=timestamp)
+    cfr_strategy_profiles = cfr_trainer.train(iterations)
+    #kuhnHelper._save_training_data(cfr_strategy_profiles, timestamp)
+    kuhnHelper.save_results(results=[cfr_strategy_profiles], file_names=['cfr_strategy.p'], base_dir=timestamp, file_dir=STRATS_DIR)
+
+
+
 def train(iterations=100, gen_graphs=False, base_dir=None):
     """
     Performs training to generate CFR strategy profile. Then it computes the best response strategy for each player
     while the opponents strategy do not change.
+    :param iterations:
+    :param gen_graphs:
+    :param base_dir:
+    :return:
     """
     # 1) Generate a strategy profile using CFR
     print('Training Strategy Profile, this may take some time')
@@ -155,7 +193,19 @@ def main(iterations=100000, run_training=True, training_mod_dir=None,
     return cfr_strategy, br_strategies, player_results
 
 
-res = main(iterations=100, run_training=True, save_models=True, save_results=True, gen_graphs=False, gen_report=True)
+res = main(iterations=10000000, run_training=True, save_models=True, save_results=True, gen_graphs=True, gen_report=True)
+
+#res = main(iterations=100000000, run_training=False, training_mod_dir='2019_05_10_22_26',  save_models=False, save_results=True, gen_graphs=True, gen_report=True)
+
+
+
+#res = main(iterations=10000000, run_training=True, save_models=True, save_results=True, gen_graphs=True, gen_report=True)
+
+
+#res = main(10000)
+
+#train_cfr(10000000)
+
 
 
 #cfr_br_df, epsilon = main(iterations=1000,

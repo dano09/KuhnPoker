@@ -6,7 +6,8 @@ import pandas as pd
 import matplotlib as mlb
 import matplotlib.pyplot as plt
 mlb.style.use('seaborn')
-
+from io import StringIO
+from csv import writer
 
 # Aggressive - B
 B = 'BET'
@@ -32,8 +33,15 @@ class TrainerInfoSet:
         self.regret_sum = [0] * self.NUM_ACTIONS
         self.strategy_sum = [0] * self.NUM_ACTIONS
         self.gen_graphs = gen_graphs
-        self.regret_list = []
-        self.strategy_list = []
+
+        self.strat_output = StringIO()
+        self.strat_csv_writer = writer(self.strat_output)
+
+        self.regret_output = StringIO()
+        self.regret_csv_writer = writer(self.regret_output)
+
+        #self.regret_list = [] #pd.DataFrame(columns=['pass', 'bet'])
+        #self.strategy_list = pd.DataFrame(columns=['pass', 'bet'])
 
     def get_strategy(self, realization_weight):
         """
@@ -56,7 +64,9 @@ class TrainerInfoSet:
             self.strategy_sum[i] += realization_weight * strategy[i]
 
         if self.gen_graphs:
-            self.strategy_list.append(self.get_average_strategy())
+            avg_strat = self.get_average_strategy()
+            self.strat_csv_writer.writerow(avg_strat)
+            #self.strategy_list.append({'Bet': avg_strat[1], 'Pass': avg_strat[0]})
 
         return strategy
 
@@ -107,7 +117,6 @@ class KuhnTrainer:
         :param history: string    -
         :param reach_probabilities: list [ float ] - probability of action for players 1, 2, 3
         :param
-
         :return: terminal_utilities: dict {str: list[int]}
         """
         plays = len(history)
@@ -167,7 +176,9 @@ class KuhnTrainer:
                 info_set_node.regret_sum[i] += rp1 * regret
 
         if self.gen_graphs:
-            info_set_node.regret_list.append(info_set_node.regret_sum.copy())
+            r = info_set_node.regret_sum.copy()
+            info_set_node.regret_csv_writer.writerow(r)
+            #info_set_node.regret_list.append({'Bet': r[1], 'Pass': r[0]})
 
         return terminal_utilities
 
@@ -202,10 +213,12 @@ class KuhnTrainer:
         for info_set in sorted(self.node_map):
             node = self.node_map[info_set]
             avg_strat = node.get_average_strategy()
-            strategy_profile[info_set] = [round(avg_strat[0], 4), round(avg_strat[1], 4)]
+            strategy_profile[info_set] = [avg_strat[0], avg_strat[1]]
             #print('info_set is: {0} and average strategy for Pass: {1:.4f} Bet: {2:.4f}'.format(node.info_set, avg_strat[0], avg_strat[1]))
 
         if self.gen_graphs:
-            kuhnHelper.plot_training(self.node_map, self.base_dir)
+            kuhnHelper._save_training_data(self.node_map, self.base_dir)
+            #kuhnHelper.plot_training(self.node_map, self.base_dir)
 
+        #return self.node_map
         return self._return_player_strats(strategy_profile)
