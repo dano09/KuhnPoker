@@ -1,11 +1,6 @@
 from random import shuffle
-from collections import defaultdict
 from multiplayer import kuhnHelper
 import numpy as np
-import pandas as pd
-import matplotlib as mlb
-import matplotlib.pyplot as plt
-mlb.style.use('seaborn')
 from io import StringIO
 from csv import writer
 
@@ -16,11 +11,6 @@ C = 'CALL'
 # Non-Aggressive - P
 K = 'CHECK'
 F = 'FOLD'
-
-# Players
-X = 0
-Y = 1
-Z = 2
 
 
 class TrainerInfoSet:
@@ -39,9 +29,6 @@ class TrainerInfoSet:
 
         self.regret_output = StringIO()
         self.regret_csv_writer = writer(self.regret_output)
-
-        #self.regret_list = [] #pd.DataFrame(columns=['pass', 'bet'])
-        #self.strategy_list = pd.DataFrame(columns=['pass', 'bet'])
 
     def get_strategy(self, realization_weight):
         """
@@ -66,7 +53,6 @@ class TrainerInfoSet:
         if self.gen_graphs:
             avg_strat = self.get_average_strategy()
             self.strat_csv_writer.writerow(avg_strat)
-            #self.strategy_list.append({'Bet': avg_strat[1], 'Pass': avg_strat[0]})
 
         return strategy
 
@@ -178,7 +164,6 @@ class KuhnTrainer:
         if self.gen_graphs:
             r = info_set_node.regret_sum.copy()
             info_set_node.regret_csv_writer.writerow(r)
-            #info_set_node.regret_list.append({'Bet': r[1], 'Pass': r[0]})
 
         return terminal_utilities
 
@@ -214,11 +199,10 @@ class KuhnTrainer:
             node = self.node_map[info_set]
             avg_strat = node.get_average_strategy()
             strategy_profile[info_set] = [avg_strat[0], avg_strat[1]]
-            #print('info_set is: {0} and average strategy for Pass: {1:.4f} Bet: {2:.4f}'.format(node.info_set, avg_strat[0], avg_strat[1]))
 
         if self.gen_graphs:
-            kuhnHelper._save_training_data(self.node_map, self.base_dir)
-            #kuhnHelper.plot_training(self.node_map, self.base_dir)
+            # For large iterations use _save_training to export data into csv
+            #kuhnHelper._save_training_data(self.node_map, self.base_dir)
+            kuhnHelper.plot_strat_and_regret(self.node_map, self.base_dir)
 
-        #return self.node_map
         return self._return_player_strats(strategy_profile)

@@ -30,11 +30,7 @@ def setup_kuhn_poker_game(strategy, best_response=None):
 
 def play_kuhn_poker(base_strat, best_response_strat, iterations):
     """
-
-    :param base_strat:
-    :param best_response_strat:
-    :param iterations:
-    :return:
+    Wrapper method that combines the cfr and best response strategies to configure the game
     """
     node_map = setup_kuhn_poker_game(base_strat, best_response_strat)
     results = mKuhnPoker.KuhnPoker(node_map).play_poker(iterations)
@@ -45,27 +41,19 @@ def play_kuhn_poker(base_strat, best_response_strat, iterations):
 
 
 def calculate_utility(strat_df, br_player_df):
-    """
-
-    :param strat_df:
-    :param br_player_df:
-    :return:
-    """
     # Join the CFR utilities with the best response utilities for one of the players
     df = strat_df.join(br_player_df, how='right', lsuffix='_cfr', rsuffix='_br')
     # Calculate utility (antes/hand) for each position
     df['avg_cfr'] = df.utility_cfr / df.plays_cfr
     # Repeat for best response
     df['avg_br'] = df.utility_br / df.plays_br
-
     return df
 
 
 def calculate_nash_equilibrium(util_results):
     """
-
-    :param util_results:
-    :return:
+    Takes total utility and divides by rounds played for each player
+    :param util_results: tuple(pd.DataFrames)
     """
     cfr = {'p1': util_results[0].utility_cfr.sum() / util_results[0].plays_cfr.sum(),
            'p2': util_results[1].utility_cfr.sum() / util_results[1].plays_cfr.sum(),
@@ -79,16 +67,6 @@ def calculate_nash_equilibrium(util_results):
     cfr_results_df.loc['diff'] = cfr_results_df.loc['BR'] - cfr_results_df.loc['CFR']
     epsilon = cfr_results_df.loc['diff'].mean(axis=0)
     return cfr_results_df, epsilon
-
-
-def train_cfr(iterations=100):
-    timestamp = datetime.now().strftime('%Y_%m_%d_%H_%M')
-    os.makedirs(timestamp, exist_ok=True)
-    cfr_trainer = mKuhnTrainer.KuhnTrainer(training_best_response=False, generate_graphs=True, base_dir=timestamp)
-    cfr_strategy_profiles = cfr_trainer.train(iterations)
-    #kuhnHelper._save_training_data(cfr_strategy_profiles, timestamp)
-    kuhnHelper.save_results(results=[cfr_strategy_profiles], file_names=['cfr_strategy.p'], base_dir=timestamp, file_dir=STRATS_DIR)
-
 
 
 def train(iterations=100, gen_graphs=False, base_dir=None):
@@ -148,7 +126,8 @@ def main(iterations=100000, run_training=True, training_mod_dir=None,
                                     WARNING: this is not optimized. Space complexity: O(iterations*48)
     :param gen_report:       bool - creates an excel report with CFR strategy, BR strategy, and simulation results
 
-    :return:
+    usage:
+    res = main(iterations=10000000, run_training=True, save_models=True, save_results=True, gen_graphs=True, gen_report=True)
     """
     timestamp = datetime.now().strftime('%Y_%m_%d_%H_%M')
     if save_models or save_results or gen_graphs or gen_report:
@@ -179,7 +158,6 @@ def main(iterations=100000, run_training=True, training_mod_dir=None,
     #    extra the BR strategy wins in each position
     cfr_game_results_df = kuhnHelper.df_builder(cfr_game_results)
     br_game_results_df = [kuhnHelper.df_builder(r) for r in br_game_results]
-
     player_results = [calculate_utility(cfr_game_results_df, br_profile) for br_profile in br_game_results_df]
     cfr_br_df, epsilon = calculate_nash_equilibrium(player_results)
     player_results.extend([cfr_br_df, epsilon])
@@ -193,26 +171,7 @@ def main(iterations=100000, run_training=True, training_mod_dir=None,
     return cfr_strategy, br_strategies, player_results
 
 
-res = main(iterations=10000000, run_training=True, save_models=True, save_results=True, gen_graphs=True, gen_report=True)
-
-#res = main(iterations=100000000, run_training=False, training_mod_dir='2019_05_10_22_26',  save_models=False, save_results=True, gen_graphs=True, gen_report=True)
 
 
-
-#res = main(iterations=10000000, run_training=True, save_models=True, save_results=True, gen_graphs=True, gen_report=True)
-
-
-#res = main(10000)
-
-#train_cfr(10000000)
-
-
-
-#cfr_br_df, epsilon = main(iterations=1000,
-#                          run_training=False,
-#                          training_mod_dir='2019_05_07_16_10',
-#                          save_models=True,
-#                          save_results=True,
-#                          gen_graphs=True)
 
 

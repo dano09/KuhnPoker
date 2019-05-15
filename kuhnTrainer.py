@@ -76,9 +76,6 @@ class KuhnTrainer:
         :param rp0: float     - reach probability of player 0 (pi)
         :param rp1: float     - reach probability of player 1 (pi)
         :return:
-
-
-
         """
         plays = len(history)
         player = plays % 2
@@ -126,8 +123,6 @@ class KuhnTrainer:
         # For each action, compute and accumulate counterfactual regret
         for a in range(0, self.NUM_ACTIONS):
             regret = util[a] - node_util
-            # This also updates node_mapping
-            #node.regret_sum[a] += regret
             node.regret_sum[a] += rp1 * regret if player == 0 else rp0 * regret
 
         return node_util
